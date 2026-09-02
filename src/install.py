@@ -12,8 +12,12 @@ def verificar_e_instalar_bibliotecas():
         "matplotlib": "matplotlib",
         "sklearn": "scikit-learn",
         "console": "console",
-        "random": "random"
-    }
+        "random": "random",
+        "seaborn": "seaborn",
+        "joblib": "joblib",
+        "json": "json",
+        "tensorflow": "tensorflow"
+   }
 
     print("==================================================================")
     print(" [Setup Automático] Passo 1: Verificando bibliotecas ............")

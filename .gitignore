@@ -1,3 +1,21 @@
+# Python
 __pycache__/
 *.pyc
 *.pyo
+*.pyd
+
+# Ambientes virtuais
+.env
+.venv/
+env/
+venv/
+
+# Logs
+*.log
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDEs
+.vscode/
+.idea/

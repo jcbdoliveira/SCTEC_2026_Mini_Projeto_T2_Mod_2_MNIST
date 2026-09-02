@@ -9,7 +9,7 @@ import random
 def carregar_dataset():    
     console = Console()
     
-    # Cria uma animação de carregamento (spinner) que atualiza em tempo real no VS Code
+    # Cria uma animação de carregamento para indicar que esta fazendo download
     with console.status("[bold green]Baixando e processando o MNIST... (Isso pode levar alguns minutos)", spinner="dots"):
         mnist = fetch_openml('mnist_784', version=1, as_frame=False, parser='auto')
         X = mnist.data.astype(np.float32)  # Matriz de pixels (70000, 784)
