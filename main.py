@@ -26,3 +26,5 @@ if __name__ == "__main__":
     #------------------------------------------------------------------
     tempo, pasta = treinar_modelo_CNN(x_treino_cnn, y_treino)
     tempos_treino['CNN (Deep Learning)'] = tempo
+    #------------------------------------------------------------------
+    avaliar_modelos(x_teste_norm, y_teste, x_teste_cnn, tempos_treino)

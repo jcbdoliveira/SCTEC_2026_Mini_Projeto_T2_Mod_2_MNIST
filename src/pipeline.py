@@ -1,3 +1,4 @@
+import json
 import os
 import time
 
@@ -5,10 +6,12 @@ import joblib
 from sklearn.datasets import fetch_openml
 import matplotlib.pyplot as plt
 import numpy as np
+import seaborn as sns
 from rich.console import Console
 import random
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, confusion_matrix, f1_score, precision_score, recall_score
 from sklearn.model_selection import train_test_split
 from sklearn.svm import SVC
 import tensorflow as tf
@@ -172,3 +175,69 @@ def treinar_modelo_CNN(x_treino_cnn, y_treino):
     caminho_cnn = os.path.join("models/", "cnn_mnist.keras")
     print(f"   -> Concluído em {tempo_cnn:.2f}s | Salvo em '{caminho_cnn}'")
     return tempo_cnn, caminho_cnn
+
+def avaliar_modelos(x_teste_norm, y_teste, x_teste_cnn, tempos_treino):
+    print("\n3. Avaliando Modelos treinados...")
+    # Carregar modelos salvos
+    modelo_rf = joblib.load(os.path.join("models/", "random_forest_mnist.joblib"))
+    modelo_svm = joblib.load(os.path.join("models/", "svm_mnist.joblib"))
+    modelo_cnn = tf.keras.models.load_model(os.path.join("models/", "cnn_mnist.keras"))
+
+    pred_rf = modelo_rf.predict(x_teste_norm)
+    pred_svm = modelo_svm.predict(x_teste_norm)
+    prob_cnn = modelo_cnn.predict(x_teste_cnn, batch_size=128)
+    pred_cnn = np.argmax(prob_cnn, axis=1)
+
+    todos_pred = {
+        'Random Forest': pred_rf,
+        'SVM(RBF)': pred_svm,
+        'CNN (Deep Learning)': pred_cnn
+    }
+
+    tabela_resultados = []
+    plt.figure(figsize=(18, 5))
+
+    for idx, (nome, preds) in enumerate(todos_pred.items(), 1):
+        acc = accuracy_score(y_teste, preds)
+        prec = precision_score(y_teste, preds, average='weighted')
+        rec = recall_score(y_teste, preds, average='weighted')
+        f1 = f1_score(y_teste, preds, average='weighted')
+        
+        tabela_resultados.append({
+            'Modelo': nome,
+            'Acurácia Global': f"{acc * 100:.2f}%",
+            'Precisão Ponderada': f"{prec * 100:.2f}%",
+            'Recall (Sensibilidade)': f"{rec * 100:.2f}%",
+            'F1-Score': f"{f1 * 100:.2f}%",
+            'Tempo Treino (s)': f"{tempos_treino[nome]:.2f}s",
+            'Erros no Teste': int(np.sum(y_teste != preds))
+        })
+        
+        # Matriz de Confusão 10x10
+        matriz_conf = confusion_matrix(y_teste, preds)
+        plt.subplot(1, 3, idx)
+        sns.heatmap(matriz_conf, annot=True, fmt='d', cmap='YlOrBr' if idx==3 else 'Blues', cbar=False,
+                    xticklabels=range(10), yticklabels=range(10))
+        plt.title(f"Matriz 10x10: {nome}\nAcurácia: {acc*100:.2f}%", fontweight='bold')
+        plt.xlabel("Dígito Predito")
+        plt.ylabel("Dígito Real")
+
+    plt.tight_layout()
+    plt.savefig("images/fase4_matrizes_confusao_comparativas.png", dpi=300)
+    plt.close()
+    print("Matrizes de Confusão salvas: 'fase4_matrizes_confusao_comparativas.png'")
+
+    df_metricas = pd.DataFrame(tabela_resultados)
+    print("\n=== TABELA COMPARATIVA CONSOLIDADA DE DESEMPENHO ===")
+    print(df_metricas.to_string(index=False))
+
+    # Salvar metadados em json na pasta models
+    with open(os.path.join("models/", "metadata.json"), "w", encoding="utf-8") as f:
+        json.dump({
+            "data_treinamento": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "tamanho_teste": len(y_teste),
+            "resultados": tabela_resultados,
+            "classes": list(range(10))
+        }, f, indent=2, ensure_ascii=False)
+
+    print(f"Metadados salvos em '{os.path.join('models/', 'metadata.json')}'")
