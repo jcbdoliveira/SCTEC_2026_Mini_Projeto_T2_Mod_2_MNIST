@@ -19,3 +19,7 @@ venv/
 # IDEs
 .vscode/
 .idea/
+
+#Pastas
+models/
+images/
