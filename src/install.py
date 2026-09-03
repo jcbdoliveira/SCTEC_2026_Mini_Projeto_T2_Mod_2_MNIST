@@ -1,4 +1,5 @@
 import sys
+import os
 import subprocess
 import importlib
 
@@ -46,4 +47,7 @@ def verificar_e_instalar_bibliotecas():
                 print(" Passo 3: Relatório de Erro na Instalação")
                 print("------------------------------------------------------------------")
                 print(f"Aviso: Não foi possível instalar '{pacote}' via pip: {e}")
-               
+
+def verifica_pastas():    
+    os.makedirs("models", exist_ok=True)
+    os.makedirs("images", exist_ok=True)
