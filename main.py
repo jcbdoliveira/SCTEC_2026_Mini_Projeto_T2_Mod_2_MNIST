@@ -5,7 +5,7 @@ verificar_e_instalar_bibliotecas()
 
 if __name__ == "__main__":
     from src.pipeline import *
-
+    
     #Etapa 01 
     dadosX, rotulosY = carregar_dataset()
     visualizar_dataset_carregado(dadosX, rotulosY)
@@ -28,3 +28,6 @@ if __name__ == "__main__":
     tempos_treino['CNN (Deep Learning)'] = tempo
     #------------------------------------------------------------------
     avaliar_modelos(x_teste_norm, y_teste, x_teste_cnn, tempos_treino)
+    #------------------------------------------------------------------
+    from src.testOOD import realiza_teste_OOD
+    realiza_teste_OOD(x_treino_cnn, y_treino, x_teste_cnn, y_teste)
