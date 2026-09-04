@@ -125,6 +125,9 @@ def treinar_modelo_SVM(x_treino_norm, y_treino,):
 
 def criar_modelo_CNN():
     modelo = models.Sequential([
+        #Camada explícita para definir o formato de entrada
+        layers.Input(shape=(28, 28, 1), name="entrada_imagem"),
+
         # Bloco 1: Convolução 2D (32 filtros 3x3) + ReLU + MaxPool (2x2)
         layers.Conv2D(32, (3, 3), activation='relu', input_shape=(28, 28, 1), name="conv2d_camada1"),
         layers.MaxPooling2D((2, 2), name="maxpool_camada1"),
