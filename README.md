@@ -324,5 +324,3 @@ python app.py --CNN:V3
 python app.py --SVM:V1
 python app.py --RF:V2
 ```
-
-Se quiser, também posso gerar uma versão mais visual do README com badges, screenshots e uma explicação técnica mais detalhada para apresentação acadêmica.
