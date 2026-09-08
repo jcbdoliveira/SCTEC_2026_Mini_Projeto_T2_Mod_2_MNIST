@@ -1,5 +1,9 @@
 <p align="center">
-  <img src="img/logo_sctec.png" alt="logo SCTEC" width="240" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="img/logo_sctecB.png">
+    <source media="(prefers-color-scheme: light)" srcset="img/logo_sctecW.png">
+    <img alt="Logo SCTEC" src="img/logo_sctecW.png">
+  </picture>
 </p>
 
 # 🧠 MNIST - Pipeline de Treinamento e Uso com V1, V2 e V3
