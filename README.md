@@ -2,7 +2,7 @@
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="img/logo_sctecB.png">
     <source media="(prefers-color-scheme: light)" srcset="img/logo_sctecW.png">
-    <img alt="Logo SCTEC" src="img/logo_sctecW.png">
+    <img alt="Logo SCTEC" src="img/logo_sctecW.png" width="200">
   </picture>
 </p>
 
