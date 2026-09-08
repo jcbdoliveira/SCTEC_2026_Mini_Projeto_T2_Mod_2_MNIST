@@ -164,6 +164,7 @@ def processamento_e_separacao(X, y, modelo='V1'):
         # Concatenar os dados originais com os modificados da V3
         x_treino_expandido = np.concatenate((x_treino_cnn, x_treino_extra), axis=0)
         y_treino_expandido = np.concatenate((y_treino, y_treino), axis=0)
+
     
     print(f"-> Treino Original: {x_treino_cnn.shape[0]} amostras")   
     
