@@ -23,3 +23,5 @@ venv/
 #Pastas
 models/
 images/
+tensorspace_output/
+converted_model/

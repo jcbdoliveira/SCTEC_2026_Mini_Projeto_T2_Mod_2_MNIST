@@ -16,7 +16,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, confusion_matrix, f1_score, precision_score, recall_score
 from sklearn.model_selection import train_test_split
 from sklearn.svm import SVC
-import tensorflow as tf
+import tensorflow as tf 
 from tensorflow.keras import layers, models, callbacks
 
 #FASE 01: EDA 
@@ -99,20 +99,21 @@ def processamento_e_separacao(X, y, modelo='V1'):
         x_treino_extra = np.array(x_treino_extra)
         
         # ---- 🌟 EXPORTAR AMOSTRA V2 🌟 ----
+        numero_aleatorio = random.randint(0, 9)
         os.makedirs(f"images/{modelo}", exist_ok=True)
         plt.figure(figsize=(6, 3))
         plt.subplot(1, 2, 1)
-        plt.imshow(x_treino_cnn[0, :, :, 0], cmap='gray')
+        plt.imshow(x_treino_cnn[numero_aleatorio, :, :, 0], cmap='gray')
         plt.title("Original (MNIST)")
         plt.axis('off')
         
         plt.subplot(1, 2, 2)
-        plt.imshow(x_treino_extra[0, :, :, 0], cmap='gray')
+        plt.imshow(x_treino_extra[numero_aleatorio, :, :, 0], cmap='gray')
         plt.title("V2 (Erosão / Fino)")
         plt.axis('off')
         
         plt.tight_layout()
-        plt.savefig(f"images/{modelo}/comparativo_processamento.png", dpi=150)
+        plt.savefig(f"images/{modelo}/{numero_aleatorio}_comparativo_processamento.png", dpi=150)
         plt.close()
         print(f"   -> Amostra visual do pipeline salva em: 'images/{modelo}/comparativo_processamento.png'")
         # ----------------------------------
@@ -250,6 +251,7 @@ def criar_modelo_CNN():
     return modelo
 
 def treinar_modelo_CNN(x_treino_cnn, y_treino, modelo):
+    print("\n3. Treinando Modelo 3: Convolutional Neural Network...")
     modelo_cnn = criar_modelo_CNN()
     modelo_cnn.summary()
 
@@ -271,8 +273,9 @@ def treinar_modelo_CNN(x_treino_cnn, y_treino, modelo):
     )
     tempo_cnn = time.time() - inicio_cnn    
     caminho_cnn = os.path.join("models", modelo, "cnn_mnist.keras")
-    print(f"   -> Concluído em {tempo_cnn:.2f}s | Salvo em '{caminho_cnn}'")
+    print(f"   -> Concluído em {tempo_cnn:.2f}s | Salvo em '{caminho_cnn}'")  
     return tempo_cnn, caminho_cnn
+
 
 def avaliar_modelos(x_teste_norm, y_teste, x_teste_cnn, tempos_treino, modelo):
     print("\n3. Avaliando Modelos treinados...")

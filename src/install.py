@@ -20,7 +20,11 @@ def verificar_e_instalar_bibliotecas():
         "tensorflow": "tensorflow",
         "cv2": "opencv-python",
         "PIL": "Pillow",
-        "PySide6": "PySide6"
+        "PySide6": "PySide6", 
+        "keras": "keras",
+        "webbrowser": "webbrowser",
+        "http.server": "http.server",
+        "socketserver": "socketserver"
    }
 
     print("==================================================================")

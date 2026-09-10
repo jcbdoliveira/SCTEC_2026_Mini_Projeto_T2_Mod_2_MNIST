@@ -1,6 +1,5 @@
 # ==============================================================================
 # APLICAÇÃO DESKTOP SIMPLIFICADA COM PySide6 E OpenCV (cv2)
-# FUNCIONALIDADE: LEITURA DE DÍGITOS COM TRATAMENTO DE PROBABILIDADE PARA SVM (V3)
 # ==============================================================================
 
 import sys
@@ -74,13 +73,6 @@ def preprocessar_e_predizer_digito(roi_cinza):
         novo_w, novo_h = 20, max(1, int(h * (20.0 / w)))
     roi_redim = cv2.resize(roi_bin, (novo_w, novo_h), interpolation=cv2.INTER_AREA)
 
-    # ----------------------------------------------------------------------
-    # 🌟 IMPLEMENTAÇÃO DO PIPELINE V3: Dilação para traços finos de fotos
-    # ----------------------------------------------------------------------
-    if versao_modelo == "V3":
-        kernel = np.ones((2, 2), np.uint8)
-        roi_redim = cv2.dilate(roi_redim, kernel, iterations=1)
-
     # 3. Canvas 28x28 and centralização por Centro de Massa
     canvas = np.zeros((28, 28), dtype=np.uint8)
     M = cv2.moments(roi_redim)
@@ -111,7 +103,6 @@ def preprocessar_e_predizer_digito(roi_cinza):
         probs = modelo_carregado.predict(tensor, verbose=0)[0]
     
     return int(np.argmax(probs)), float(np.max(probs)), probs
-
 
 def processar_imagem_completa(caminho_arquivo):
     """Aplica o detector OpenCV na imagem carregada e mapeia múltiplos dígitos."""

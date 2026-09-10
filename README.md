@@ -6,21 +6,33 @@
   </picture>
 </p>
 
-# 🧠 MNIST - Pipeline de Treinamento e Uso com V1, V2 e V3
+# 🧠 MNIST - Pipeline de treinamento, comparação,  inferência e visualização 3D.
 
-Este projeto realiza o treinamento e a comparação de modelos para classificação de dígitos manuscritos do dataset MNIST usando diferentes pipelines de processamento e três abordagens de modelos:
+Este projeto tem como objetivo treinar, comparar e utilizar modelos para classificação de dígitos manuscritos do conjunto MNIST. A solução inclui três abordagens principais:
 
 - Random Forest
-- SVM (RBF)
-- CNN
+- SVM com kernel RBF
+- CNN (Rede Neural Convolucional)
 
-Além disso, o projeto inclui:
+Além disso, o projeto também realiza:
 
-- geração de gráficos de análise do dataset
-- comparação de métricas por modelo
-- visualização de matrizes de confusão
+- análise exploratória do dataset
+- visualização do balanceamento das classes
+- comparação de métricas entre modelos
+- geração de matrizes de confusão
 - teste de out-of-distribution (OOD)
-- aplicação desktop para inferência em imagens digitais
+- aplicação desktop para inferência em imagens
+- visualização 3D da CNN
+
+---
+
+## 📌 Visão geral
+
+O fluxo principal é executado em [main.py](main.py). Ele carrega o dataset MNIST, aplica o processamento correspondente à versão escolhida, treina os modelos, compara os resultados e salva os artefatos gerados em pastas separadas por versão.
+
+A aplicação de inferência está em [app.py](app.py). Ela permite carregar uma imagem de um, ou mais, dígito(s) e usar um modelo treinado para realizar a predição diretamente.
+
+A visulaização 3D está em [app3D.py](app3D.py). Ela permite carregar o modelo treinado para visualizar as camads que compõe CNN.
 
 ---
 
@@ -28,8 +40,9 @@ Além disso, o projeto inclui:
 
 ```text
 .
-├── app.py
 ├── main.py
+├── app.py
+├── app3D.py
 ├── README.md
 ├── images/
 │   ├── V1/
@@ -43,142 +56,66 @@ Além disso, o projeto inclui:
 │       ├── metadata.json
 │       ├── random_forest_mnist.joblib
 │       └── svm_mnist.joblib
-└── src/
-    ├── install.py
-    ├── pipeline.py
-    └── testOOD.py
+├── src/
+│   ├── install.py
+│   ├── pipeline.py
+│   ├── modeloexemplo.py
+│   ├── visualizador.py
+│   └── testOOD.py
+└── img/
 ```
 
----
+Os resultados de treinamento e gráficos são armazenados em:
 
-## ⚙️ Como funciona o projeto
-
-### 1. Treinamento principal
-O arquivo principal do treinamento é o [main.py](main.py).
-
-Ele executa, em sequência:
-
-1. carregamento do dataset MNIST
-2. visualização do balanceamento das classes
-3. separação treino/teste
-4. processamento de imagens conforme a versão escolhida
-5. treinamento dos modelos:
-   - Random Forest
-   - SVM
-   - CNN
-6. avaliação comparativa com métricas e matrizes de confusão
-7. teste OOD para verificar robustez em situações fora do domínio
-
-### 2. App para uso em imagens
-O arquivo [app.py](app.py) é uma interface gráfica em PySide6 para usar um modelo previamente treinado em uma imagem digitada ou em um recorte de dígito.
-
-Ele permite escolher o tipo de modelo e a versão:
-
-- CNN
-- SVM
-- Random Forest
-
-com versões V1, V2 e V3.
+- `images/<V1|V2|V3>/` para visualizações e comparações
+- `models/<V1|V2|V3>/` para modelos treinados e metadados
 
 ---
 
-## 🏋️ Diferentes formas de treino
+## ⚙️ Requisitos
 
-### 🟢 V1 - Treino base
-A versão V1 usa o processamento padrão do MNIST sem alterações adicionais na imagem.
+O projeto usa bibliotecas como:
 
-- imagens em formato 28x28
-- normalização por 255
-- treinamento padrão dos modelos
+- Python 3.10+
+- NumPy
+- Pandas
+- Matplotlib
+- Seaborn
+- scikit-learn
+- OpenCV
+- TensorFlow
+- PySide6
+- joblib
+- console
+- random
+- json
+- Pillow
+- keras
+- webbrowser
+- http.server
+- socketserver
 
-Comando:
+A instalação das dependências é feita automaticamente pelo script [src/install.py](src/install.py), quando o projeto é executado.
+
+---
+
+## 🚀 Como executar o treinamento
+
+No diretório raiz do projeto, execute um dos comandos abaixo:
+
+### Versão V1 - pipeline base
 
 ```bash
 python main.py V1
 ```
 
----
-
-### 🟡 V2 - Treino com traços finos
-A versão V2 aplica erosão nas imagens de treino para gerar traços mais finos.
-
-Processamento usado:
-
-- erosão via OpenCV
-- geração de imagens suplementares
-- concatenação com os dados originais
-- treinamento com dados expandidos
-
-Comando:
+### Versão V2 - traços mais finos
 
 ```bash
 python main.py V2
 ```
 
-Esse pipeline é útil para simular imagens com escrita mais delicada ou mais fina.
-
----
-
-### 🔵 V3 - Treino com traços robustos
-A versão V3 aplica:
-
-- dilatação para engrossar linhas e traços
-- blur gaussiano para suavizar bordas
-- geração de imagens reforçadas para o treino
-
-Comando:
-
-```bash
-python main.py V3
-```
-
-Essa versão foi desenhada para lidar melhor com imagens que tenham traços mais grossos ou menos definidos.
-
----
-
-## 🧪 Modelos treinados
-
-O projeto treina os seguintes algoritmos em cada versão:
-
-### 🌲 Random Forest
-- usado em dados vetorizados 784 pixels
-- guarda o modelo em:
-  - `models/V1/random_forest_mnist.joblib`
-  - `models/V2/random_forest_mnist.joblib`
-  - `models/V3/random_forest_mnist.joblib`
-
-### 📈 SVM
-- kernel RBF
-- usado sobre os mesmos vetores 784 pixels
-- salvo em:
-  - `models/V1/svm_mnist.joblib`
-  - `models/V2/svm_mnist.joblib`
-  - `models/V3/svm_mnist.joblib`
-
-### 🧠 CNN
-- rede convolucional para entradas 28x28x1
-- salva o melhor modelo em:
-  - `models/V1/cnn_mnist.keras`
-  - `models/V2/cnn_mnist.keras`
-  - `models/V3/cnn_mnist.keras`
-
----
-
-## 🚀 Como executar o treinamento completo
-
-No diretório raiz do projeto:
-
-```bash
-python main.py V1
-```
-
-ou
-
-```bash
-python main.py V2
-```
-
-ou
+### Versão V3 - traços mais robustos
 
 ```bash
 python main.py V3
@@ -186,47 +123,138 @@ python main.py V3
 
 Durante a execução, o programa:
 
-- baixa o dataset MNIST via OpenML
-- salva gráficos em `images/<versao>/`
-- salva modelos em `models/<versao>/`
-- gera `metadata.json` com métricas e informações do treino
+1. carrega o conjunto MNIST
+2. exibe amostras e balanceamento das classes
+3. separa treino e teste
+4. aplica o processamento específico da versão escolhida
+5. treina os 3 modelos
+6. salva gráficos e métricas
+7. gera arquivos em `models/` e `images/`
+
+---
+
+## 🏋️ Versões do pipeline
+
+### V1 - Pipeline base
+A versão V1 mantém o processamento padrão do MNIST.
+
+Características:
+
+- entradas 28x28
+- normalização por 255
+- treinamento sem perturbações adicionais
+
+---
+
+### V2 - Traços finos
+A versão V2 aplica erosão sobre as imagens para simular traços mais delicados.
+
+Processamento usado:
+
+- erosão com OpenCV
+- geração de imagens adicionais
+- concatenação com os dados originais
+- treinamento com dados expandidos, **dataset duplicado**
+
+Essa versão costuma ser útil para cenários em que a escrita é mais sutil ou mais fina.
+
+---
+
+### V3 - Traços robustos (grosso)
+A versão V3 aplica:
+
+- dilatação para engrossar os traços
+- blur gaussiano para suavizar bordas
+- geração de imagens reforçadas para treinamento, **dataset duplicado**
+
+Essa configuração é indicada para imagens com traços mais grossos, menos definidos ou com ruído visual.
+
+---
+
+## 🧪 Modelos treinados
+
+Em cada versão, o projeto treina os seguintes modelos:
+
+### Random Forest
+- entra com dados vetorizados em 784 pixels
+- salvo em:
+  - `models/V1/random_forest_mnist.joblib`
+  - `models/V2/random_forest_mnist.joblib`
+  - `models/V3/random_forest_mnist.joblib`
+
+### SVM (RBF)
+- usa kernel RBF
+- também treinado sobre os vetores 784 pixels
+- salvo em:
+  - `models/V1/svm_mnist.joblib`
+  - `models/V2/svm_mnist.joblib`
+  - `models/V3/svm_mnist.joblib`
+
+### CNN
+- rede convolucional com entrada 28x28x1
+- salvo em:
+  - `models/V1/cnn_mnist.keras`
+  - `models/V2/cnn_mnist.keras`
+  - `models/V3/cnn_mnist.keras`
+
+---
+
+## 📊 Saídas geradas
+
+Ao rodar o treinamento, o projeto gera:
+
+- gráficos de distribuição das classes em `images/<versao>/`
+- exemplos visuais dos dados e do processamento em `images/<versao>/`
+- matrizes de confusão comparativas entre modelos
+- arquivo `metadata.json` em cada pasta de modelo com métricas e informações do treino
+
+Exemplo de estrutura de saída:
+
+```text
+models/
+└── V3/
+    ├── cnn_mnist.keras
+    ├── random_forest_mnist.joblib
+    ├── svm_mnist.joblib
+    └── metadata.json
+```
 
 ---
 
 ## 🖥️ Como usar a aplicação desktop
 
-A aplicação desktop permite testar inferência em uma imagem específica.
+A aplicação [app.py](app.py) permite testar inferência em uma imagem específica selecionada pelo usuário.
 
-### 🧭 Exemplos de uso
+### Exemplos de uso
 
 #### CNN da versão V3
+
 ```bash
 python app.py --CNN:V3
 ```
 
 #### Random Forest da versão V2
+
 ```bash
 python app.py --RF:V2
 ```
 
 #### SVM da versão V1
+
 ```bash
 python app.py --SVM:V1
 ```
 
-### Observação
-A estrutura da entrada do argumento é:
+### Estrutura dos argumentos
 
 ```text
 --<TIPO_DE_MODELO>:<VERSAO>
 ```
 
-Onde:
-
 - `--CNN` = CNN
 - `--SVM` = SVM
 - `--RF` = Random Forest
-- `V1`, `V2`, `V3` = versões do pipeline
+- `V1`, `V2`, `V3` = versão do pipeline
 
 Exemplos válidos:
 
@@ -236,22 +264,63 @@ python app.py --RF:V2
 python app.py --SVM:V3
 ```
 
+A interface carrega automaticamente o modelo correspondente ao argumento informado e realiza pré-processamento da imagem antes da predição.
+
+---
+
+## 🖥️ Como usar o visualizador 3D
+
+A aplicação [app3D.py](app3D.py) permite visualizar as canadas da rede CNN de forma 3D e interativa.
+
+### Exemplos de uso
+
+```bash
+python app3D.py V2
+```
+
+---
+
+## 🔬 Observações de uso
+
+- O projeto usa o dataset MNIST obtido via OpenML.
+- O treinamento pode levar alguns minutos dependendo do ambiente e do hardware disponível.
+- Modelos treinados já existentes podem ser reutilizados pela aplicação sem a necessidade de rodar todo o pipeline novamente.
+- Os experimentos ficam organizados por pasta de versão para facilitar comparação entre V1, V2 e V3.
+
+---
+
+## ✅ Resumo
+
+Este projeto funciona como uma pipeline completa de experimentação com MNIST, permitindo:
+
+- comparar abordagens tradicionais e profundas
+- avaliar o impacto de diferentes pré-processamentos
+- salvar modelos treinados para uso posterior
+- testar inferência em imagens reais por meio de uma interface gráfica
+
 ---
 
 ## 📦 Dependências
 
 O projeto verifica e instala automaticamente as bibliotecas necessárias em [src/install.py](src/install.py), incluindo:
 
-- numpy
-- pandas
-- matplotlib
+ NumPy
+- Pandas
+- Matplotlib
+- Seaborn
 - scikit-learn
-- tensorflow
-- opencv-python
-- Pillow
+- OpenCV
+- TensorFlow
 - PySide6
-- seaborn
 - joblib
+- console
+- random
+- json
+- Pillow
+- keras
+- webbrowser
+- http.server
+- socketserver
 
 Se quiser rodar manualmente a verificação:
 
@@ -327,4 +396,11 @@ python main.py V3
 python app.py --CNN:V3
 python app.py --SVM:V1
 python app.py --RF:V2
+
+# Usar modelo treinado para visualização 3D
+python app3D.py V1
+python app3D.py V2
+python app3D.py V3
 ```
+
+Mafra, 10 de Setembro de 2026.
