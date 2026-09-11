@@ -32,7 +32,7 @@ O fluxo principal é executado em [main.py](main.py). Ele carrega o dataset MNIS
 
 A aplicação de inferência está em [app.py](app.py). Ela permite carregar uma imagem de um, ou mais, dígito(s) e usar um modelo treinado para realizar a predição diretamente.
 
-A visulaização 3D está em [app3D.py](app3D.py). Ela permite carregar o modelo treinado para visualizar as camads que compõe CNN.
+A visulaização 3D está em [app3D.py](app3D.py). Ela permite carregar o modelo treinado para visualizar as camadas que compõe CNN.
 
 ---
 
@@ -401,6 +401,14 @@ python app.py --RF:V2
 python app3D.py V1
 python app3D.py V2
 python app3D.py V3
+python app3D.py EX
 ```
+
+---
+
+## 🎥 Demonstração
+[Demosntração](https://drive.google.com/file/d/1qTVBBsZWa1O2ZPXAglkN62yUSLNBjT1n/view?usp=sharing)
+
+---
 
 Mafra, 10 de Setembro de 2026.

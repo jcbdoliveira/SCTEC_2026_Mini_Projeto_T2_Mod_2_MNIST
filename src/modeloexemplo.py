@@ -44,6 +44,3 @@ def main():
     model.save(model_path)
     print(f"\n[SUCESSO] Modelo salvo em: {model_path.resolve()}")
     print("Agora você pode executar: python visualizar_modelo.py")
-
-if __name__ == "__main__":
-    main()
