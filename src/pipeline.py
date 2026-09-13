@@ -99,7 +99,7 @@ def processamento_e_separacao(X, y, modelo='V1'):
         x_treino_extra = np.array(x_treino_extra)
         
         # ---- 🌟 EXPORTAR AMOSTRA V2 🌟 ----
-        numero_aleatorio = random.randint(0, 9)
+        numero_aleatorio = random.randint(0, len(x_treino_cnn) - 1)
         os.makedirs(f"images/{modelo}", exist_ok=True)
         plt.figure(figsize=(6, 3))
         plt.subplot(1, 2, 1)
@@ -115,7 +115,7 @@ def processamento_e_separacao(X, y, modelo='V1'):
         plt.tight_layout()
         plt.savefig(f"images/{modelo}/{numero_aleatorio}_comparativo_processamento.png", dpi=150)
         plt.close()
-        print(f"   -> Amostra visual do pipeline salva em: 'images/{modelo}/comparativo_processamento.png'")
+        print(f"   -> Amostra visual do pipeline salva em: 'images/{modelo}/{numero_aleatorio}_comparativo_processamento.png'")
         # ----------------------------------
 
         x_treino_expandido = np.concatenate((x_treino_cnn, x_treino_extra), axis=0)
@@ -144,22 +144,23 @@ def processamento_e_separacao(X, y, modelo='V1'):
         x_treino_extra = np.array(x_treino_extra)
         
         # ---- 🌟 EXPORTAR AMOSTRA V3 🌟 ----
+        numero_aleatorio = random.randint(0, len(x_treino_cnn) - 1)
         os.makedirs(f"images/{modelo}", exist_ok=True)
         plt.figure(figsize=(6, 3))
         plt.subplot(1, 2, 1)
-        plt.imshow(x_treino_cnn[0, :, :, 0], cmap='gray')
+        plt.imshow(x_treino_cnn[numero_aleatorio, :, :, 0], cmap='gray')
         plt.title("Original (MNIST)")
         plt.axis('off')
         
         plt.subplot(1, 2, 2)
-        plt.imshow(x_treino_extra[0, :, :, 0], cmap='gray')
+        plt.imshow(x_treino_extra[numero_aleatorio, :, :, 0], cmap='gray')
         plt.title("V3 (Dilação + Blur)")
         plt.axis('off')
         
         plt.tight_layout()
-        plt.savefig(f"images/{modelo}/comparativo_processamento.png", dpi=150)
+        plt.savefig(f"images/{modelo}/{numero_aleatorio}_comparativo_processamento.png", dpi=150)
         plt.close()
-        print(f"   -> Amostra visual do pipeline salva em: 'images/{modelo}/comparativo_processamento.png'")
+        print(f"   -> Amostra visual do pipeline salva em: 'images/{modelo}/{numero_aleatorio}_comparativo_processamento.png'")
         # ----------------------------------
 
         # Concatenar os dados originais com os modificados da V3

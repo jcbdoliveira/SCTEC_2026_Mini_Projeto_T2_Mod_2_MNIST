@@ -634,6 +634,139 @@ def gerar_metadados_didaticos_camadas(info_camadas):
             
     return metadados
 
+def gerar_metadados_didaticos_camadas2(info_camadas):
+    """Gera metadados super simples e didáticos usando exemplos do mundo real."""
+    metadados = []
+    
+    # 1. Entrada MNIST
+    metadados.append({
+        "id": "mnist_input",
+        "name": "mnist_input",
+        "type": "GreyscaleInput (InputLayer)",
+        "display_type": "Camada de Entrada (O Papel do Desenho)",
+        "shape": "[28, 28, 1]",
+        "params": 0,
+        "activation": "Ajuste de Brilho",
+        "importance": "É o papel onde o usuário desenha. Sem ele, a rede não tem onde olhar.",
+        "role": "• Como a camada anterior interfere aqui? Vem direto do seu dedo ou mouse. Se você desenha com força, os pixels ficam brancos (valor máximo); se não desenha nada, fica preto (valor zero).\n\n"
+                "• O que ela faz (Mundo Real)? Ela funciona como um scanner que limpa a imagem. Se o desenho veio borrado ou cinza, ela ajusta o contraste para que o desenho fique bem nítido (valores entre 0 e 1).\n\n"
+                "• Contribuição para a próxima camada: Ela entrega a imagem limpa e quadriculada. Isso permite que o próximo operário (a Convolução) passe uma lupa por cima procurando os primeiros traços.",
+        "color": "#0ea5e9"
+    })
+    
+    total = len(info_camadas)
+    for idx, c in enumerate(info_camadas):
+        nome = c["name"]
+        tipo = c["type"]
+        cfg = c.get("config", {})
+        params = c.get("params", 0)
+        shape_val = c.get("output_shape")
+        shape_str = str(shape_val) if shape_val else "[28, 28, 1]"
+        eh_ultima = (idx == total - 1)
+        
+        if tipo == "Conv2D":
+            filtros = cfg.get("filters", 16)
+            k = cfg.get("kernel_size", [5, 5])
+            k_str = f"{k[0]}×{k[1]}" if isinstance(k, (list, tuple)) else f"{k}×{k}"
+            ativ = cfg.get("activation", "relu").upper()
+            metadados.append({
+                "id": nome,
+                "name": nome,
+                "type": f"Convolucional 2D ({filtros} filtros)",
+                "display_type": "Convolução (O Caçador de Traços)",
+                "shape": shape_str,
+                "params": params,
+                "activation": ativ,
+                "importance": "Funciona como um detetive com uma lupa, procurando pedacinhos específicos como linhas retas, curvas ou quinas.",
+                "role": f"• Como a camada anterior interfere aqui? Se a imagem anterior tiver uma linha reta na vertical, o 'filtro de linhas verticais' vai brilhar muito nessa região. Se a imagem for uma tela preta, nenhum filtro acende.\n\n"
+                        f"• O que ela faz (Mundo Real)? Imagine que você tem 16 carimbos transparentes. Um carimbo busca 'curvas do número 0', outro busca 'a barra do número 1'. Ela bate esses carimbos na imagem. A função {ativ} apaga tudo o que deu errado (deixa preto) e faz brilhar forte apenas onde o formato encaixou perfeitamente.\n\n"
+                        f"• Contribuição para a próxima camada: Ela entrega um mapa mostrando onde estão os traços mais importantes (ex: 'tem uma curva aqui em cima e uma reta embaixo').",
+                "color": "#38bdf8"
+            })
+        elif tipo in ["MaxPooling2D", "AveragePooling2D"]:
+            p = cfg.get("pool_size", [2, 2])
+            p_str = f"{p[0]}×{p[1]}" if isinstance(p, (list, tuple)) else f"{p}×{p}"
+            tipo_pool = "Max Pooling" if "Max" in tipo else "Average Pooling"
+            metadados.append({
+                "id": nome,
+                "name": nome,
+                "type": "Subamostragem (Resumo)",
+                "display_type": "Agrupamento (O Resumidor)",
+                "shape": shape_str,
+                "params": params,
+                "activation": "Nenhuma",
+                "importance": "Deixa a rede rápida e garante que ela reconheça o número mesmo se você desenhar ele um pouco torto ou fora do centro.",
+                "role": f"• Como a camada anterior interfere aqui? Ela olha para os mapas brilhantes que a Convolução entregou. Se houver um ponto brilhando muito ali perto, ela captura esse brilho.\n\n"
+                        f"• O que ela faz (Mundo Real)? Imagine que você está olhando uma foto de muito longe e semicerra os olhos. Você não vê os detalhes pequenos (ruídos), mas vê o formato geral. Ela divide a imagem em bloquinhos de {p_str} pixels e escolhe só o pixel mais forte de cada bloco, jogando o resto fora.\n\n"
+                        f"• Contribuição para a próxima camada: Entrega uma imagem muito menor (com metade do tamanho), mas que ainda mantém o esqueleto do desenho principal. Isso ajuda o próximo operário a ver a imagem de forma mais ampla.",
+                "color": "#818cf8"
+            })
+        elif tipo == "Flatten":
+            metadados.append({
+                "id": nome,
+                "name": nome,
+                "type": "Achatamento (Flatten)",
+                "display_type": "Achatamento (Organizador da Fila)",
+                "shape": shape_str,
+                "params": 0,
+                "activation": "Nenhuma",
+                "importance": "Transforma um mapa quadrado de duas dimensões em uma linha reta de pistas para facilitar o julgamento final.",
+                "role": "• Como a camada anterior interfere aqui? Ela recebe os mapas resumidos com os formatos encontrados. A posição de cada brilho no quadrado vai determinar em qual lugar da fila o dado vai ficar.\n\n"
+                        "• O que ela faz (Mundo Real)? Imagine que você recortou todas as pistas encontradas na imagem e as colocou, uma por uma, dentro de uma única linha de caixas, como uma fila indiana de suspeitos.\n\n"
+                        "• Contribuição para a próxima camada: Entrega uma lista gigante de características em linha reta. Isso permite que a próxima camada (o Juiz) olhe para todas as pistas ao mesmo tempo de uma só vez.",
+                "color": "#a855f7"
+            })
+        elif tipo == "Dense":
+            unidades = cfg.get("units", 10)
+            ativ = cfg.get("activation", "relu").upper()
+            if eh_ultima or unidades == 10:
+                metadados.append({
+                    "id": nome,
+                    "name": nome,
+                    "type": "Camada de Saída (Softmax)",
+                    "display_type": "Decisão Final (O Verco Geral)",
+                    "shape": shape_str,
+                    "params": params,
+                    "activation": "Softmax",
+                    "importance": "É o painel que mostra o resultado final em porcentagem (ex: 95% de chance de ser o número 3).",
+                    "role": f"• Como a camada anterior interfere aqui? Se a camada anterior disser que encontrou 'duas barrigas redondas empilhadas', isso vai ativar intensamente o neurônio do número 8.\n\n"
+                            f"• O que ela faz (Mundo Real)? Existem 10 portões (de 0 a 9). Cada portão tem um fiscal que conhece muito bem o seu próprio número. O fiscal do portão '7' olha a lista de pistas: se tiver uma linha horizontal no topo e uma diagonal descendo, ele grita forte. A função Softmax junta o grito de todos os fiscais e calcula quem gritou mais alto, transformando isso em uma nota de 0% a 100%.\n\n"
+                            f"• Contribuição para a próxima camada: O fluxo termina aqui! O sistema escolhe o portão com a maior porcentagem e exibe o número final na sua tela.",
+                    "color": "#10b981"
+                })
+            else:
+                metadados.append({
+                    "id": nome,
+                    "name": nome,
+                    "type": "Camada Densa (Totalmente Conectada)",
+                    "display_type": "Camada Combinadora (O Montador de Quebra-Cabeça)",
+                    "shape": shape_str,
+                    "params": params,
+                    "activation": ativ,
+                    "importance": "Junta as pistas soltas (linhas e curvas) para tentar montar formas completas (como círculos ou triângulos).",
+                    "role": f"• Como a camada anterior interfere aqui? Se a fila de pistas contiver 'uma linha vertical à esquerda' e 'uma linha horizontal no topo', esses dados combinados acendem um alerta aqui.\n\n"
+                            f"• O que ela faz (Mundo Real)? Ela age como um montador de quebra-cabeça. Ela pega a pista da 'linha reta' e a pista da 'curva' e cola as duas na cabeça para ver se formam a silhueta de um 'P' ou de um 'O'. A ativação {ativ} descarta as combinações que não fazem sentido nenhum e passa adiante só o que parece promissor.\n\n"
+                            f"• Contribuição para a próxima camada: Entrega um resumo de formatos grandes e complexos já montados, prontos para que os fiscais da última camada decidam o palpite final.",
+                    "color": "#6366f1"
+                })
+        else:
+            metadados.append({
+                "id": nome,
+                "name": nome,
+                "type": tipo,
+                "display_type": tipo,
+                "shape": shape_str,
+                "params": params,
+                "activation": cfg.get("activation", "N/A"),
+                "importance": "Uma engrenagem de suporte no meio da fábrica.",
+                "role": "• Como a camada anterior interfere aqui? Recebe os dados gerados no passo anterior.\n\n"
+                        "• O que ela faz (Mundo Real)? Passa os dados adiante ou faz pequenos ajustes organizacionais na esteira.\n\n"
+                        "• Contribuição para a próxima camada: Mantém a esteira rodando sem travar o fluxo.",
+                "color": "#64748b"
+            })
+            
+    return metadados
+
 
 def gerar_codigo_js_tensorspace(info_camadas):
     """Gera as chamadas JavaScript para construir dinamicamente o modelo TensorSpace."""
