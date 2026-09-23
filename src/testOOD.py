@@ -1,6 +1,6 @@
 import os
 import numpy as np
-from src.pipeline import criar_modelo_CNN
+from src.pipeline import criar_modelo_CNN_V4, criar_modelo_CNN_V1
 import matplotlib.pyplot as plt
 
 def realiza_teste_OOD(x_treino_cnn, y_treino, x_teste_cnn, y_teste, modelo):
@@ -8,7 +8,12 @@ def realiza_teste_OOD(x_treino_cnn, y_treino, x_teste_cnn, y_teste, modelo):
     x_treino_ood = x_treino_cnn[mascara_sem_4_7]
     y_treino_ood = y_treino[mascara_sem_4_7]
 
-    modelo_ood = criar_modelo_CNN()    
+    if (modelo == 'V4'):
+        modelo_ood = criar_modelo_CNN_V4()    
+    else:
+        modelo_ood = criar_modelo_CNN_V1()    
+
+    #modelo_ood = criar_modelo_CNN()    
     modelo_ood.fit(x_treino_ood, y_treino_ood, epochs=5, batch_size=64, verbose=0)
 
     mascara_teste_apenas_4_7 = np.isin(y_teste, [4, 7])

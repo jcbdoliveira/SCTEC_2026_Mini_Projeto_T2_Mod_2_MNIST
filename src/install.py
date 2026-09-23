@@ -24,7 +24,8 @@ def verificar_e_instalar_bibliotecas():
         "keras": "keras",
         "webbrowser": "webbrowser",
         "http.server": "http.server",
-        "socketserver": "socketserver"
+        "socketserver": "socketserver",
+        "shutil": "shutil"
    }
 
     print("==================================================================")

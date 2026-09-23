@@ -136,12 +136,12 @@ def processar_imagem_completa(caminho_arquivo):
             if conf > maior_confianca:
                 maior_confianca, melhor_distribuicao, melhor_digito = conf, dist, digito
 
-            # Desenha caixas verdes ao redor de cada dígito detectado no papel/post-it
-            cv2.rectangle(img_anotada, (x, y), (x + w, y + h), (40, 180, 80), 3)
+            # Desenha caixas azul ao redor de cada dígito detectado no papel/post-it
+            cv2.rectangle(img_anotada, (x, y), (x + w, y + h), (221, 0, 28), 3)
             tag = f"{digito} ({conf * 100:.1f}%)"
             cv2.putText(
                 img_anotada, tag, (x, y - 10), 
-                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (40, 180, 80), 2, cv2.LINE_AA
+                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (221, 0, 28), 2, cv2.LINE_AA
             )
 
     # Converte e exibe a imagem anotada no QLabel do Qt

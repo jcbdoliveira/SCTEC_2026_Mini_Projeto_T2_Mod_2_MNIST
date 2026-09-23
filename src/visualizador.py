@@ -19,6 +19,7 @@ import webbrowser
 from pathlib import Path
 import http.server
 import socketserver
+import shutil
 
 # ---------------------------------------------------------------------------
 # Configurações do Projeto
@@ -278,13 +279,10 @@ def converter_modelo_para_tensorspace(tf, model, output_dir):
 
 def sanitizar_topologia_tfjs(model_topology):
     """
-    Ajusta recursivamente a topologia do Keras para o formato estritamente esperado pelo TensorFlow.js 1.7.4:
+    Ajusta recursivamente a topologia do Keras para o formato esperado pelo TensorFlow.js 1.7.4:
     - Converte 'Functional' para 'Model'
-    - Garante que InputLayer receba EXCLUSIVAMENTE 'batchInputShape', NUNCA 'inputShape' junto.
-      (TFJS lança: 'Only provide the inputShape OR batchInputShape argument to inputLayer, not both at the same time.')
-    - Converte 'inbound_nodes' de objetos Keras 3 ({"args": [...]}) para matrizes Keras 2 ([[[layer_name, 0, 0, {}]]]).
-      (TFJS lança: 'Corrupted configuration, expected array for nodeData: [object Object]')
-    - Garante que input_layers e output_layers sejam matrizes válidas [[nome, 0, 0]].
+    - Injeta metadados limpos e formas compatíveis com a arquitetura LeNet moderna do Keras 3
+    - Remove propriedades estritas do Keras moderno que travam o parser do TensorSpace.js
     """
     if not isinstance(model_topology, dict):
         return model_topology
@@ -297,6 +295,7 @@ def sanitizar_topologia_tfjs(model_topology):
     if isinstance(config, dict):
         layers = config.get("layers", [])
         prev_layer_name = None
+        cleaned_layers = []
 
         for idx, layer in enumerate(layers):
             if not isinstance(layer, dict):
@@ -309,28 +308,39 @@ def sanitizar_topologia_tfjs(model_topology):
 
             layer_name = layer.get("name") or cfg.get("name")
             
+            # --- INCORPORAÇÃO DO NOSSO ADAPTADOR HÍBRIDO ---
+            # O TensorSpace.js antigo não lida com a camada 'InputLayer' explícita na lista de camadas.
+            if cls_name == "InputLayer":
+                # Guardamos o formato de entrada para injetar na próxima camada antes de descartar esta
+                continue
+                
+            # Limpeza cirúrgica de propriedades do Keras 3 / TF 2.x+ que quebram o parser
+            properties_to_keep = [
+                "name", "trainable", "filters", "kernel_size", "strides", 
+                "padding", "data_format", "activation", "use_bias", 
+                "pool_size", "rate", "units", "axis", "momentum", "epsilon"
+            ]
+            
+            # Reconstrói as configurações da camada mantendo apenas o essencial
+            cleaned_layer_config = {}
+            for prop in properties_to_keep:
+                if prop in cfg:
+                    cleaned_layer_config[prop] = cfg[prop]
+            
+            layer["config"] = cleaned_layer_config
+            cfg = cleaned_layer_config
+            # -----------------------------------------------
+
             b_shape = cfg.get("batch_input_shape") or cfg.get("batch_shape") or cfg.get("batchInputShape") or cfg.get("batchShape")
             in_shape = cfg.get("input_shape") or cfg.get("inputShape") or cfg.get("shape")
             
-            if cls_name == "InputLayer" or idx == 0:
-                if b_shape and isinstance(b_shape, (list, tuple)):
-                    final_batch_shape = list(b_shape)
-                elif in_shape and isinstance(in_shape, (list, tuple)):
-                    final_batch_shape = [None] + list(in_shape)
-                else:
-                    final_batch_shape = [None, 28, 28, 1]
-                
-                cfg["batchInputShape"] = final_batch_shape
-                # Remover terminantemente inputShape e variantes para não acionar o erro de colisão no TFJS:
-                for k in ["inputShape", "input_shape", "shape", "batch_shape", "batch_input_shape", "batchShape"]:
-                    cfg.pop(k, None)
+            # Se for a primeira camada válida da lista adaptada (ex: Conv2D), injetamos o shape do MNIST
+            if not cleaned_layers:
+                cfg["batchInputShape"] = [None, 28, 28, 1]
                 layer["inbound_nodes"] = []
                 prev_layer_name = layer_name
+                cleaned_layers.append(layer)
                 continue
-            else:
-                if cfg.get("batchInputShape") and cfg.get("inputShape"):
-                    cfg.pop("inputShape", None)
-                    cfg.pop("input_shape", None)
 
             # Sanitizar inbound_nodes para Keras 2 / TFJS 1.7.4
             raw_nodes = layer.get("inbound_nodes")
@@ -340,20 +350,19 @@ def sanitizar_topologia_tfjs(model_topology):
                 for node in raw_nodes:
                     node_entries = []
                     if isinstance(node, dict):
-                        # Formato Keras 3: {"args": [...], "kwargs": {...}}
                         args = node.get("args", [])
                         for arg in args:
-                            if isinstance(arg, dict):
-                                c = arg.get("config", {}) if isinstance(arg.get("config"), dict) else {}
-                                hist = c.get("keras_history") or arg.get("keras_history")
-                                if isinstance(hist, (list, tuple)) and len(hist) >= 1:
-                                    node_entries.append([str(hist[0]), int(hist[1]) if len(hist) > 1 else 0, int(hist[2]) if len(hist) > 2 else 0, {}])
-                                elif "name" in c:
-                                    node_entries.append([str(c["name"]), 0, 0, {}])
-                            elif isinstance(arg, (list, tuple)) and len(arg) >= 1:
-                                node_entries.append([str(arg[0]), int(arg[1]) if len(arg) > 1 else 0, int(arg[2]) if len(arg) > 2 else 0, {}])
-                            elif isinstance(arg, str):
-                                node_entries.append([arg, 0, 0, {}])
+                          if isinstance(arg, dict):
+                              c = arg.get("config", {}) if isinstance(arg.get("config"), dict) else {}
+                              hist = c.get("keras_history") or arg.get("keras_history")
+                              if isinstance(hist, (list, tuple)) and len(hist) >= 1:
+                                  node_entries.append([str(hist[0]), int(hist[1]) if len(hist) > 1 else 0, int(hist[2]) if len(hist) > 2 else 0, {}])
+                              elif "name" in c:
+                                  node_entries.append([str(c["name"]), 0, 0, {}])
+                          elif isinstance(arg, (list, tuple)) and len(arg) >= 1:
+                              node_entries.append([str(arg[0]), int(arg[1]) if len(arg) > 1 else 0, int(arg[2]) if len(arg) > 2 else 0, {}])
+                          elif isinstance(arg, str):
+                              node_entries.append([arg, 0, 0, {}])
                     elif isinstance(node, (list, tuple)):
                         for item in node:
                             if isinstance(item, (list, tuple)):
@@ -379,17 +388,22 @@ def sanitizar_topologia_tfjs(model_topology):
 
             layer["inbound_nodes"] = clean_nodes
             prev_layer_name = layer_name
+            cleaned_layers.append(layer)
 
-        # Sanitizar input_layers e output_layers
-        if layers:
-            first_name = layers[0].get("name") or layers[0].get("config", {}).get("name")
-            last_name = layers[-1].get("name") or layers[-1].get("config", {}).get("name")
+        # Atualiza a lista de camadas com a versão filtrada e adaptada
+        config["layers"] = cleaned_layers
+
+        # Sanitizar input_layers e output_layers globais do modelo
+        if cleaned_layers:
+            first_name = cleaned_layers[0].get("name") or cleaned_layers[0].get("config", {}).get("name")
+            last_name = cleaned_layers[-1].get("name") or cleaned_layers[-1].get("config", {}).get("name")
             if first_name:
                 config["input_layers"] = [[first_name, 0, 0]]
             if last_name:
                 config["output_layers"] = [[last_name, 0, 0]]
                         
     return model_topology
+
 
 
 def exportar_tfjs_nativo(model, target_dir):
@@ -769,28 +783,30 @@ def gerar_metadados_didaticos_camadas2(info_camadas):
 
 
 def gerar_codigo_js_tensorspace(info_camadas):
-    """Gera as chamadas JavaScript para construir dinamicamente o modelo TensorSpace."""
+    """Gera as chamadas JavaScript para construir a arquitetura real de 18 camadas no seu Fork."""
     js_lines = []
     
-    # 1. Entrada MNIST (28x28x1)
+    # 1. Camada de Entrada (Escapando chaves duplas para a f-string do Python)
     js_lines.append("    // 1. Camada de entrada (GreyscaleInput para MNIST 28x28x1)")
-    js_lines.append("    const inLayer = new TSP.layers.GreyscaleInput({ shape: [28, 28, 1], name: 'mnist_input' });")
+    js_lines.append("    const inLayer = new TSP.layers.GreyscaleInput({shape: [28, 28, 1], name: 'mnist_input'});")
     js_lines.append("    model.add(inLayer);")
     js_lines.append("    window.tspCamadasMapa['mnist_input'] = inLayer;")
     
     for camada in info_camadas:
         tipo = camada["type"]
         nome = camada["name"]
-        cfg = camada["config"]
+        cfg = camada.get("config", {})
+        if not isinstance(cfg, dict):
+            cfg = {}
         
         if tipo == "Conv2D":
-            filters = cfg.get("filters", 16)
-            ksize = cfg.get("kernel_size", [5, 5])
+            filters = int(cfg.get("filters", 32))
+            ksize = cfg.get("kernel_size", [3, 3])
             ksize_val = ksize[0] if isinstance(ksize, (list, tuple)) else ksize
             strides = cfg.get("strides", [1, 1])
             strides_val = strides[0] if isinstance(strides, (list, tuple)) else strides
             
-            js_lines.append(f"    // Conv2D: {nome} ({filters} filtros, kernel {ksize_val}x{ksize_val})")
+            js_lines.append(f"    // Conv2D: {nome}")
             js_lines.append(f"    const layer_{nome} = new TSP.layers.Conv2d({{")
             js_lines.append(f"        name: '{nome}',")
             js_lines.append(f"        kernelSize: {ksize_val},")
@@ -806,60 +822,113 @@ def gerar_codigo_js_tensorspace(info_camadas):
             strides = cfg.get("strides", [2, 2])
             strides_val = strides[0] if isinstance(strides, (list, tuple)) else strides
             
-            js_lines.append(f"    // Pooling: {nome} (pool {pool_val}x{pool_val}, strides {strides_val})")
+            js_lines.append(f"    // Pooling: {nome}")
             js_lines.append(f"    const layer_{nome} = new TSP.layers.Pooling2d({{")
             js_lines.append(f"        name: '{nome}',")
-            js_lines.append(f"        poolSize: [{pool_val}, {pool_val}],")
-            js_lines.append(f"        strides: [{strides_val}, {strides_val}]")
+            js_lines.append(f"        poolSize: {pool_val},")
+            js_lines.append(f"        strides: {strides_val}")
             js_lines.append(f"    }});")
             js_lines.append(f"    model.add(layer_{nome});")
             js_lines.append(f"    window.tspCamadasMapa['{nome}'] = layer_{nome};")
             
+        elif tipo == "Dropout":
+            # Chame a nova classe legítima criada no seu Fork!
+            js_lines.append(f"    // Dropout: {nome}")
+            js_lines.append(f"    const layer_{nome} = new TSP.layers.Dropout({{")
+            js_lines.append(f"        name: '{nome}',")
+            js_lines.append(f"        color: 0xf59e0b")
+            js_lines.append(f"    }});")
+            js_lines.append(f"    model.add(layer_{nome});")
+            js_lines.append(f"    window.tspCamadasMapa['{nome}'] = layer_{nome};")
+            
+        elif tipo == "BatchNormalization":
+            # Chame a nova classe de suporte criada no seu Fork!
+            js_lines.append(f"    // BatchNormalization: {nome}")
+            js_lines.append(f"    const layer_{nome} = new TSP.layers.BatchNormalization({{")
+            js_lines.append(f"        name: '{nome}',")
+            js_lines.append(f"        color: 0x38bdf8")
+            js_lines.append(f"    }});")
+            js_lines.append(f"    model.add(layer_{nome});")
+            js_lines.append(f"    window.tspCamadasMapa['{nome}'] = layer_{nome};")
+
         elif tipo == "Dense":
-            units = cfg.get("units", 10)
+            units = int(cfg.get("units", 10))
             is_last = (camada == info_camadas[-1]) or (units == 10)
             
             if is_last:
-                js_lines.append(f"    // Output1d: {nome} (10 classes 0-9)")
+                # Instancia o componente Output1d de barras verticais e dinâmicas
+                js_lines.append(f"    // 18. Camada de Decisão (Painel Horizontal MNIST 0-9)")
                 js_lines.append(f"    const layer_{nome} = new TSP.layers.Output1d({{")
                 js_lines.append(f"        name: '{nome}',")
-                js_lines.append(f"        units: {units},")
+                js_lines.append(f"        units: 10,")
                 js_lines.append(f"        outputs: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']")
                 js_lines.append(f"    }});")
                 js_lines.append(f"    model.add(layer_{nome});")
                 js_lines.append(f"    window.tspCamadasMapa['{nome}'] = layer_{nome};")
             else:
-                js_lines.append(f"    // Dense: {nome} ({units} unidades)")
+                js_lines.append(f"    // Dense Oculta: {nome}")
                 js_lines.append(f"    const layer_{nome} = new TSP.layers.Dense({{")
                 js_lines.append(f"        name: '{nome}',")
                 js_lines.append(f"        units: {units}")
                 js_lines.append(f"    }});")
                 js_lines.append(f"    model.add(layer_{nome});")
                 js_lines.append(f"    window.tspCamadasMapa['{nome}'] = layer_{nome};")
+
+
                 
-        elif tipo in ["Dropout", "BatchNormalization", "Activation"]:
-            js_lines.append(f"    // Camada '{nome}' ({tipo}) omitida na renderização 3D direta (não possui representação geométrica direta no TensorSpace)")
+        elif tipo == "Flatten":
+            js_lines.append(f"    // Flatten: {nome}")
+            js_lines.append(f"    const layer_{nome} = new TSP.layers.Flatten({{")
+            js_lines.append(f"        name: '{nome}'")
+            js_lines.append(f"    }});")
+            js_lines.append(f"    model.add(layer_{nome});")
+            js_lines.append(f"    window.tspCamadasMapa['{nome}'] = layer_{nome};")
             
     return "\n".join(js_lines)
 
-
 def gerar_arquivo_html(info_camadas, camadas_ignoradas, output_dir):
-    """Gera o arquivo index.html completo e autônomo com TensorSpace Playground LeNet adaptado e inspeção detalhada de camadas."""
-    print(f"\n[5/6] Gerando arquivo HTML da visualização 3D...")
+    """Gera index.html integrado de forma 100% nativa com o seu Fork local compilado."""
+    print(f"\n[5/6] Integrando o seu Fork local e gerando arquivo HTML...")
     output_dir.mkdir(parents=True, exist_ok=True)
     html_path = output_dir / "index.html"
     
+    # --- ROTEIRO DE COPIA AUTOMÁTICA DO SEU FORK ---
+    caminho_do_seu_fork = Path("C:/Tensor/tensorspace/dist/tensorspace.min.js")
+    if caminho_do_seu_fork.exists():
+        shutil.copy(caminho_do_seu_fork, output_dir / "tensorspace.min.js")
+        print("[OK] Seu fork compilado 'tensorspace.min.js' foi injetado com sucesso no servidor local!")
+    else:
+        print("[ALERTA] Arquivo do fork local não encontrado. Rodando em modo de contingência.")
+    
     js_layers_code = gerar_codigo_js_tensorspace(info_camadas)
+    
+    # Como as novas camadas agora são visualizadas nativamente, limpamos a lista de ignoradas
     metadados_camadas = gerar_metadados_didaticos_camadas(info_camadas)
+    
+    # Adicionando metadados didáticos para a BatchNormalization na lista para o clique abrir o modal lateral
+    for c in info_camadas:
+        if c["type"] == "BatchNormalization":
+            metadados_camadas.append({
+                "id": c["name"],
+                "name": c["name"],
+                "type": "BatchNormalization (Normalização por Lote)",
+                "display_type": "Normalização por Lote",
+                "shape": str(c.get("output_shape", "N/A")),
+                "params": c.get("params", 0),
+                "activation": "Nenhuma (Escalonamento linear)",
+                "importance": "Estabiliza o treinamento da rede convolucional profunda, permitindo o uso de taxas de aprendizado mais altas e atuando como um regularizador leve.",
+                "role": "Normaliza as ativações de cada canal convolucional para que possuam média zero e variância unitária. Isso impede que pequenas mudanças nos pesos das primeiras camadas causem variações extremas nas camadas profundas (Deslocamento de Covariância Interna).",
+                "color": "#38bdf8"
+            })
+            
     metadados_json = json.dumps(metadados_camadas, ensure_ascii=False)
     
-    # Gerar chips HTML das camadas para a barra de navegação
+    # Gerar os botões de navegação no painel superior
     chips_html_list = []
     idx = 0
     for item in metadados_camadas:
-        idx = idx + 1
+        idx += 1
         cid = item["id"]
-        cname = item["name"]
         cdisp = item["display_type"]
         ccolor = item.get("color", "#38bdf8")
         chips_html_list.append(
@@ -869,6 +938,12 @@ def gerar_arquivo_html(info_camadas, camadas_ignoradas, output_dir):
             f'</button>'
         )
     chips_bar_html = "\n      ".join(chips_html_list)
+
+    # Nota: No bloco HTML abaixo, substituímos a tag CDN antiga pelo arquivo LOCAL gerado pelo seu Fork:
+    # <script src="tensorspace.min.js"></script>
+    
+    # Além disso, injetamos a abertura recursiva automática das camadas no callback de model.init()!
+
     
     # Montar avisos de camadas ignoradas em HTML
     avisos_html = ""
@@ -891,7 +966,7 @@ def gerar_arquivo_html(info_camadas, camadas_ignoradas, output_dir):
   <script src="https://cdn.jsdelivr.net/npm/three@0.98.0/examples/js/controls/OrbitControls.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tweenjs/tween.js@18.6.4/dist/tween.umd.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.7.4/dist/tf.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/tensorspace@0.6.1/dist/tensorspace.min.js"></script>
+  <script src="tensorspace.min.js"></script>
 
   <style>
     * {{
@@ -907,6 +982,45 @@ def gerar_arquivo_html(info_camadas, camadas_ignoradas, output_dir):
       width: 100vw;
       height: 100vh;
     }}
+
+    /* Container que centraliza a fita de círculos de forma flutuante */
+    #mnist-labels-container {{
+        position: absolute;
+        bottom: 8%; /* Ajuste essa altura para alinhar perfeitamente abaixo da sua plataforma 3D */
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 15px; /* Espaçamento idêntico ao das barras na cena 3D */
+        pointer-events: none; /* Permite que o mouse interaja com a cena 3D por trás dos círculos */
+        z-index: 10;
+        font-family: sans-serif;
+    }}
+
+  /* Design idêntico aos círculos azuis da foto */
+  .mnist-circle-label {{
+      width: 32px;
+      height: 32px;
+      border: 2px solid #00ffff; /* Azul/Ciano neon vibrante */
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      font-weight: bold;
+      font-size: 16px;
+      background-color: rgba(30, 41, 59, 0.7); /* Fundo escuro semi-transparente */
+      box-shadow: 0 0 10px rgba(0, 255, 255, 0.4); /* Leve brilho neon ao redor */
+      transition: all 0.3s ease;
+    }}
+
+/* Efeito dinâmico: quando a barra acender, o círculo brilha junto! */
+.mnist-circle-label.active {{
+    background-color: #00ffff;
+    color: #0f172a;
+    box-shadow: 0 0 20px #00ffff;
+    transform: scale(1.15);
+}}
+
 
     /* Container 3D onde o TensorSpace renderiza o modelo */
     #tensorspace-container {{
@@ -1335,7 +1449,7 @@ def gerar_arquivo_html(info_camadas, camadas_ignoradas, output_dir):
 
   <!-- Container principal onde o modelo 3D é desenhado -->
   <div id="tensorspace-container"></div>
-
+  
   <!-- Cabeçalho -->
   <div id="header">
     <h1>SCTec - Análise Preditiva com Python [T2] Módulo 2</h1>
@@ -1903,7 +2017,9 @@ def gerar_arquivo_html(info_camadas, camadas_ignoradas, output_dir):
       scene.add(gridHelper);
 
       // Criar placas 3D identificadas para cada camada
-      const camadasRenderizaveis = metadadosCamadas.filter(c => !c.type.includes("Dropout") && !c.type.includes("Achatamento"));
+      // Nova linha (Permite que o Dropout entre na lista de blocos 3D renderizáveis):
+      const camadasRenderizaveis = metadadosCamadas.filter(c => !c.type.includes("Achatamento"));
+
       const stepZ = 7;
       const startZ = -((camadasRenderizaveis.length - 1) * stepZ) / 2;
 
